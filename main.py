@@ -79,8 +79,9 @@ def get_problem(N: int):
 
 def submit_solution():
     labels, start, connections = parse_graph()
-    guess(labels, start, connections)
+    print(guess(labels, start, connections))
 
 
 if __name__ == '__main__':
-    get_problem(6)
+    get_problem(12)
+    # submit_solution()
