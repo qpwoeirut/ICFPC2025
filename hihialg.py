@@ -3,7 +3,7 @@ import json
 import random
 
 BASE_URL = "https://31pwr5t6ij.execute-api.eu-west-2.amazonaws.com"
-team_id = "[redacted]"
+team_id = "stanleyzhong8@gmail.com qrdOuC0p6bsNo5RJmwmoyw"
 
 def register(name: str, pl: str, email: str):
     resp = requests.post(f"{BASE_URL}/register", json={
@@ -131,76 +131,88 @@ if __name__ == "__main__":
     
     # res = register("------- PRIZE CUTOFF -------", "scheme", "stanleyzhong8@gmail.com")
     # print(res)
-    select("tertius")
-    n = 18
-    lenid = 10
-    id = ""
-    for i in range(lenid):
-        id += random.choice("012345")
-    batches = 100
+    problem = "secundus"
+    n = 12
+    lenid = 6
+    batches = 50
 
-    nodes = [] #nodes[i]['id'] = id of i, nodes[i]['value'] = value of node
-    edges = []
-    starting_room = 0
-    for i in range(n):
-        nodes.append([])
-        edges.append([])
-        nodes[i] = {
-                "id": [],
-                "value": -1,
-            }
-        for j in range(7):
-            edges[i].append(-1)
+
+    while True:
+        select(problem)
+        id = ""
+        for i in range(lenid):
+            id += random.choice("012345")
+
+        nodes = [] #nodes[i]['id'] = id of i, nodes[i]['value'] = value of node
+        edges = []
+        starting_room = 0
+        for i in range(n):
+            nodes.append([])
+            edges.append([])
+            nodes[i] = {
+                    "id": [],
+                    "value": -1,
+                }
+            for j in range(7):
+                edges[i].append(-1)
         
-    while not done(edges):
-        send_query = []
-        our_queries = []
-        for _ in range(batches):
-            gen = randstr("012345666", n*18-len(id), id)
-            send_query.append(gen[0])
-            our_queries.append(gen[1])
-        res = explore(send_query)
-        for _ in range(batches):
-            query = our_queries[_]
-            results = res['results'][_]
-            starting_room = results[0]
-            prevat = -1
-            prevdoor = -1
-            at = -1
-            result_index = 0
-            for i in range(len(query)):
-                if query[i] == '6':
-                    foundid = results[result_index:result_index + len(id)]
-                    value = results[result_index]
-                    at = -1
-                    for j in range(len(nodes)):
-                        if nodes[j]['id'] == foundid:
-                            at = j
-                            break
-                    if at == -1:
-                        at = nextfree(nodes)
-                        nodes[at]['id'] = foundid
-                        nodes[at]['value'] = value
-                    if prevat != -1:
-                        edges[prevat][prevdoor] = at
-                    prevat = at
-                    prevdoor = 6
-                    at = edges[at][6]
-                    result_index += len(id)
-                else:
-                    if at == -1:
-                        prevat = -1
-                        prevdoor = -1
-                    else:
+        sad = False
+        while not done(edges):
+            send_query = []
+            our_queries = []
+            for _ in range(batches):
+                gen = randstr("012345666", n*18-len(id), id)
+                send_query.append(gen[0])
+                our_queries.append(gen[1])
+            res = explore(send_query)
+            for _ in range(batches):
+                query = our_queries[_]
+                results = res['results'][_]
+                starting_room = results[0]
+                prevat = -1
+                prevdoor = -1
+                at = -1
+                result_index = 0
+                for i in range(len(query)):
+                    if query[i] == '6':
+                        foundid = results[result_index:result_index + len(id)]
+                        value = results[result_index]
+                        at = -1
+                        for j in range(len(nodes)):
+                            if nodes[j]['id'] == foundid:
+                                at = j
+                                break
+                        if at == -1:
+                            at = nextfree(nodes)
+                            nodes[at]['id'] = foundid
+                            nodes[at]['value'] = value
+                        if prevat != -1:
+                            edges[prevat][prevdoor] = at
                         prevat = at
-                        prevdoor = int(query[i])  
-                        at = edges[at][prevdoor]
-                    result_index += 1
-            print(edges)
-            print(nodes)
-            print(query)
-    print(parse(edges))
-    rooms = []
-    for i in nodes:
-        rooms.append(i['value'])
-    print(guess(rooms, starting_room, parse(edges)))
+                        prevdoor = 6
+                        at = edges[at][6]
+                        result_index += len(id)
+                    else:
+                        if at == -1:
+                            prevat = -1
+                            prevdoor = -1
+                        else:
+                            prevat = at
+                            prevdoor = int(query[i])  
+                            at = edges[at][prevdoor]
+                        result_index += 1
+                print(edges)
+                print(nodes)
+                print(query)
+            if nodes[-1]['value'] == -1:
+                sad = True
+                break
+        print("e")
+        if sad:
+            continue
+        print(parse(edges))
+        rooms = []
+        for i in nodes:
+            rooms.append(i['value'])
+        print(guess(rooms, starting_room, parse(edges)))
+        # break
