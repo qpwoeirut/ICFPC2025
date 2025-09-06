@@ -48,12 +48,39 @@ def guess(rooms: list[int], starting_room: int, connections: list[dict]):
     return resp.json()
 
 
-if __name__ == '__main__':
-    N = 6
+def parse_graph() -> tuple[list[int], int, list[dict[str, dict[str, int]]]]:
+    with open("graph.txt", 'r') as f:
+        labels = [int(x) for x in f.readline().split()]
+        start = int(f.readline())
+        connections = []
+        for line in f:
+            src_room, src_door, dst_room, dst_door = map(int, line.split())
+            connections.append({
+                "from": {
+                    "room": src_room,
+                    "door": src_door
+                },
+                "to": {
+                    "room": dst_room,
+                    "door": dst_door
+                }
+            })
+    return labels, start, connections
 
+
+def get_problem(N: int):
     select(PROBLEMS[N])
     random_route = ''.join(str(random.randint(0, 5)) for _ in range(18 * N))
     output = explore([random_route])
     results = output["results"]
     with open("route.txt", 'w') as f:
         f.write(f"{N}\n{' '.join(random_route)}\n{' '.join(map(str, results[0]))}")
+
+
+def submit_solution():
+    labels, start, connections = parse_graph()
+    guess(labels, start, connections)
+
+
+if __name__ == '__main__':
+    get_problem(6)

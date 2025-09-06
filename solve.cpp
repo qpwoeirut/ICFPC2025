@@ -13,6 +13,7 @@ Uses backtracking to search the possible ways to merge the labels into a graph.
 #include <algorithm>
 #include <map>
 #include <set>
+#include <vector>
 
 using namespace std;
 
@@ -45,20 +46,59 @@ bool edges_match(int node_id) {
 }
 
 map<int, int> used_ids;
+pair<int, int> edges[32][6];
+void output_solution() {
+    for (int i=0; i<32; ++i) {
+        for (int j=0; j<6; ++j) {
+            edges[i][j] = { -1, -1 };
+        }
+    }
+
+    vector<int> room_ids;
+    room_ids.reserve(used_ids.size());
+    for (const auto &kv : used_ids) room_ids.push_back(kv.first);
+
+    for (const int &room_id : room_ids) {
+        for (int j=0; j<6; ++j) {
+            if (edges[room_id][j].first != -1) continue;
+            const int dst_room = edge_id[room_id][j];
+            for (int k=0; k<6; ++k) {
+                if (edges[dst_room][k].first == -1 && edge_id[dst_room][k] == room_id) {
+                    edges[room_id][j] = { dst_room, k };
+                    edges[dst_room][k] = { room_id, j };
+                    break;
+                }
+            }
+        }
+    }
+
+    map<int,int> room_index;
+    for (int i=0; i<room_ids.size(); ++i) room_index[room_ids[i]] = i;
+
+    ofstream fout("graph.txt", ios_base::app);
+    for (int i=0; i<room_ids.size(); ++i) {
+        if (i) { cout << ' '; fout << ' '; }
+        int lbl = room_ids[i] & 3;
+        cout << lbl;
+        fout << lbl;
+    }
+    cout << '\n';
+    fout << '\n';
+
+    int start_idx = room_index[id[0]];
+    cout << start_idx << '\n';
+    fout << start_idx << '\n';
+
+    for (const int &room_id : room_ids) {
+        for (int j=0; j<6; ++j) {
+            cout << room_index[room_id] << ' ' << j << ' ' << room_index[edges[room_id][j].first] << ' ' << edges[room_id][j].second << '\n';
+            fout << room_index[room_id] << ' ' << j << ' ' << room_index[edges[room_id][j].first] << ' ' << edges[room_id][j].second << '\n';
+        }
+    }
+}
 void recurse(int idx) {
     if (idx == N * K + 1) {
-        cout << "Found solution" << endl;
-        for (int i=0; i<N*K+1; ++i) {
-            cout << id[i] << " ";
-        }
-        cout << endl;
-        for (int i=0; i<N+3; ++i) {
-            for (int j=0; j<6; ++j) {
-                cout << edge_id[i][j] << " ";
-            }
-            cout << " ";
-        }
-        cout << endl;
+        output_solution();
         return;
     }
 
@@ -114,6 +154,11 @@ int main() {
 
     cout << "Running solver with N = " << N << endl;
 
+    // Clear previous contents of graph.txt for this run
+    {
+        ofstream clr("graph.txt", ios_base::trunc);
+    }
+
     for (int i=0; i<N*K; ++i) {
         fin >> route[i];
     }
@@ -130,6 +175,4 @@ int main() {
     }
 
     recurse(0);
-
-//    ofstream fout("graph.txt");
 }
