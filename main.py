@@ -49,6 +49,11 @@ def guess(rooms: list[int], starting_room: int, connections: list[dict]):
 
 
 if __name__ == '__main__':
-    select(PROBLEMS[3])
-    random_route = ''.join(str(random.randint(0, 5)) for _ in range(18 * 3))
-    print(explore([random_route]))
+    N = 6
+
+    select(PROBLEMS[N])
+    random_route = ''.join(str(random.randint(0, 5)) for _ in range(18 * N))
+    output = explore([random_route])
+    results = output["results"]
+    with open("route.txt", 'w') as f:
+        f.write(f"{N}\n{' '.join(random_route)}\n{' '.join(map(str, results[0]))}")
