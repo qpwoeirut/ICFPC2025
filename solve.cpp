@@ -48,6 +48,7 @@ bool edges_match(int node_id) {
 map<int, int> used_ids;
 pair<int, int> edges[32][6];
 void output_solution() {
+    cout << "Found solution\n";
     for (int i=0; i<32; ++i) {
         for (int j=0; j<6; ++j) {
             edges[i][j] = { -1, -1 };
@@ -60,8 +61,8 @@ void output_solution() {
 
     for (const int &room_id : room_ids) {
         for (int j=0; j<6; ++j) {
-            if (edges[room_id][j].first != -1) continue;
             const int dst_room = edge_id[room_id][j];
+            if (edges[room_id][j].first != -1 || dst_room == -1) continue;
             for (int k=0; k<6; ++k) {
                 if (edges[dst_room][k].first == -1 && edge_id[dst_room][k] == room_id) {
                     edges[room_id][j] = { dst_room, k };
@@ -69,6 +70,32 @@ void output_solution() {
                     break;
                 }
             }
+        }
+    }
+
+    // Match remaining edges that we know the destination room for. Hopefully there's only one option for each.
+    for (const int &room_id : room_ids) {
+        for (int j=0; j<6; ++j) {
+            const int dst_room = edge_id[room_id][j];
+            if (edges[room_id][j].first != -1 || dst_room == -1) continue;
+            cerr << "Unassigned edge " << room_id << ' ' << j << '\n';
+            for (int k=0; k<6; ++k) {
+                if (edges[dst_room][k].first == -1) {
+                    cerr << "Assigned to " << dst_room << ' ' << k << '\n';
+                    edges[room_id][j] = { dst_room, k };
+                    edges[dst_room][k] = { room_id, j };
+                    break;
+                }
+            }
+        }
+    }
+
+    // Assign remaining edges to themselves and pray it's right.
+    for (const int &room_id : room_ids) {
+        for (int j=0; j<6; ++j) {
+            if (edges[room_id][j].first != -1) continue;
+            cerr << "Assigning edge " << room_id << ' ' << j << " to itself\n";
+            edges[room_id][j] = { room_id, j };
         }
     }
 
