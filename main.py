@@ -1,4 +1,6 @@
 import random
+import subprocess
+import sys
 
 import dotenv
 import requests
@@ -68,13 +70,15 @@ def parse_graph() -> tuple[list[int], int, list[dict[str, dict[str, int]]]]:
     return labels, start, connections
 
 
-def get_problem(N: int):
+def get_problem(N: int, K: int):
     select(PROBLEMS[N])
-    random_route = ''.join(str(random.randint(0, 5)) for _ in range(18 * N))
-    output = explore([random_route])
+    # random_route = ''.join(str(random.randint(0, 5)) for _ in range(18 * N))
+    route = ''.join('0' + str(random.randint(0, 5)) for _ in range((18 - K) * N // 2)) + ''.join(str(random.randint(0, 5)) for _ in range(N * K))
+    assert len(route) == 18 * N
+    output = explore([route])
     results = output["results"]
     with open("route.txt", 'w') as f:
-        f.write(f"{N}\n{' '.join(random_route)}\n{' '.join(map(str, results[0]))}")
+        f.write(f"{N}\n{' '.join(route)}\n{' '.join(map(str, results[0]))}")
 
 
 def submit_solution():
@@ -82,6 +86,11 @@ def submit_solution():
     print(guess(labels, start, connections))
 
 
+def attempt(N: int, K: int):
+    get_problem(N, K)
+    subprocess.run(["./solve.sh"], stdout=sys.stdout, stderr=sys.stderr)
+    submit_solution()
+
+
 if __name__ == '__main__':
-    get_problem(12)
-    # submit_solution()
+    attempt(12, 13)  # Should work within 4s if we're lucky w/ input
