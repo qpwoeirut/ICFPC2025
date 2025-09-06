@@ -123,7 +123,12 @@ void output_solution() {
         }
     }
 }
+int max_idx = 0;
 void recurse(int idx) {
+    if (max_idx < idx) {
+        max_idx = idx;
+        cerr << idx << '\n';
+    }
     if (idx == N * K + 1) {
         output_solution();
         return;
