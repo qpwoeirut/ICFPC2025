@@ -3,7 +3,7 @@ import json
 import random
 
 BASE_URL = "https://31pwr5t6ij.execute-api.eu-west-2.amazonaws.com"
-team_id = "stanleyzhong8@gmail.com qrdOuC0p6bsNo5RJmwmoyw"
+team_id = "[redacted]"
 
 def register(name: str, pl: str, email: str):
     resp = requests.post(f"{BASE_URL}/register", json={
