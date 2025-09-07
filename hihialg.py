@@ -1,42 +1,6 @@
-import requests
-import json
 import random
 
-BASE_URL = "https://31pwr5t6ij.execute-api.eu-west-2.amazonaws.com"
-team_id = "[redacted]"
-
-def register(name: str, pl: str, email: str):
-    resp = requests.post(f"{BASE_URL}/register", json={
-        "name": name,
-        "pl": pl,
-        "email": email
-    })
-    return resp.json()
-
-def select(problem_name: str):
-    resp = requests.post(f"{BASE_URL}/select", json={
-        "id": team_id,
-        "problemName": problem_name
-    })
-    return resp.json()
-
-def explore(plans: list[str]):
-    resp = requests.post(f"{BASE_URL}/explore", json={
-        "id": team_id,
-        "plans": plans
-    })
-    return resp.json()
-
-def guess(rooms: list[int], starting_room: int, connections: list[dict]):
-    resp = requests.post(f"{BASE_URL}/guess", json={
-        "id": team_id,
-        "map": {
-            "rooms": rooms,
-            "startingRoom": starting_room,
-            "connections": connections
-        }
-    })
-    return resp.json()
+from interact import *
 
 def interact():
     while True:
@@ -128,9 +92,6 @@ def parse(edges):
 
 
 if __name__ == "__main__":
-    
-    # res = register("------- PRIZE CUTOFF -------", "scheme", "stanleyzhong8@gmail.com")
-    # print(res)
     problem = "secundus"
     n = 12
     lenid = 6
