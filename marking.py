@@ -459,9 +459,10 @@ def solve_problem(N, K, problem):
 
 
 def main():
-    for N, problem in interact.PROBLEMS.items():
-        solve_problem(N, 18, problem)
     while True:
+        for N, problem in interact.PROBLEMS.items():
+            if N >= 18:
+                solve_problem(N, 18, problem)
         for N, problem in [*interact.PROBLEMS_2.items(), *interact.PROBLEMS_3.items()]:
             K = 6
             for _ in range(100):
