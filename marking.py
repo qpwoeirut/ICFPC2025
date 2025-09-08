@@ -263,6 +263,87 @@ def convert_graph_to_connections(N: int, graph: list[list[int]], dry_run=True) -
     return connections, single_matches, guesses
 
 
+def count_possible_assignments(N: int, graph: list[list[int]]) -> int:
+    """
+    Count the number of valid assignments for the remaining unmatched doors
+    (after pairing all mutually-known edges).
+
+    Model mirrors the logic in `convert_graph_to_connections` up to the
+    "both sides agree" phase, then counts how many single-side matches remain
+    per destination room and how many door slots are available there. The
+    number of possible completions is the product over rooms v of P(slots_v, needs_v),
+    where:
+      - needs_v = number of incoming single matches targeting v
+      - slots_v = number of v's doors not already committed by mutual pairs
+
+    Notes:
+    - Unknown edges (value -1) are ignored for single-match counting.
+    - Self-loops (u -> u) consume two doors per mutual pair and contribute
+      floor(count[u->u] / 2) to the mutual-pair count for that room.
+    - If for any room needs_v > slots_v, the count is 0 (infeasible).
+
+    :param N: number of rooms
+    :param graph: adjacency where graph[u][d] is destination room or -1
+    :return: the exact number of possible assignments as an integer
+    """
+
+    # Count multiplicities of directed edges between room pairs.
+    # counts[u][v] = number of doors in u leading to v (v != -1)
+    counts: list[dict[int, int]] = [collections.defaultdict(int) for _ in range(N)]
+    in_deg = [0] * N
+    for u in range(N):
+        for v in graph[u]:
+            if v != -1:
+                counts[u][v] += 1
+                in_deg[v] += 1
+
+    # Compute how many doors in each room are already fixed by mutual agreement.
+    # For u != v: mutual pairs contribute min(count[u][v], count[v][u]) doors at each of u and v.
+    # For u == v: each mutual pair consumes 2 self-loop doors in the same room, up to floor(count[v][v]/2).
+    mutual_used = [0] * N  # doors already committed by mutual agreements per room
+
+    # Handle u != v pairs by iterating pairs once.
+    for u in range(N):
+        for v, c_uv in counts[u].items():
+            if v < 0 or v >= N:
+                continue
+            if v <= u:
+                continue  # ensure unordered pair processed once where u < v
+            c_vu = counts[v].get(u, 0)
+            m = min(c_uv, c_vu)
+            if m:
+                mutual_used[u] += m
+                mutual_used[v] += m
+
+    # Handle self-loops
+    for v in range(N):
+        c_vv = counts[v].get(v, 0)
+        if c_vv:
+            m_self = c_vv // 2  # floor
+            if m_self:
+                mutual_used[v] += m_self
+
+    # After mutual agreements, per room v:
+    #  - needs_v = remaining incoming singles to v = in_deg[v] - mutual_used[v]
+    #  - slots_v = remaining door slots in v that are not mutually committed = 6 - mutual_used[v]
+    # The number of assignments is product_v P(slots_v, needs_v).
+    ways = 1
+    for v in range(N):
+        needs_v = in_deg[v] - mutual_used[v]
+        if needs_v <= 0:
+            continue
+        slots_v = 6 - mutual_used[v]
+        if needs_v > slots_v:
+            # Inconsistent: not enough available doors to accommodate singles.
+            return 0
+        # Multiply permutations m * (m-1) * ... for k terms.
+        m = slots_v
+        k = needs_v
+        for t in range(k):
+            ways *= (m - t)
+
+    return ways
+
 def find_traversal(graph: list[list[int]]) -> tuple[list[int], list[int]]:
     """
     Find a minimal or near-minimal walk that visits all nodes in the graph at least once, starting from room index 0.
@@ -494,8 +575,8 @@ def solve_problem(N, K, problem):
     labels, graph = construct_graph(N, initial_route, initial_result, modifications, results)
     # print(graph)
 
-    _, single_matches, guesses = convert_graph_to_connections(N, graph)
-    while single_matches > 4 or guesses > 2:
+    # Use the exact assignment-count check instead of a dry-run conversion
+    while count_possible_assignments(N, graph) > 4:
         traversal_idxs, traversal_doors = find_traversal(graph)
         # print(traversal_idxs)
         # print(traversal_doors)
@@ -529,7 +610,6 @@ def solve_problem(N, K, problem):
 
         graph = augment_graph(graph, traversal_idxs, traversal_route, traversal_result, traversal_modifications,
                               traversal_results)
-        _, single_matches, guesses = convert_graph_to_connections(N, graph)
 
     connections, single_matches, guesses = convert_graph_to_connections(N, graph, dry_run=False)
 
