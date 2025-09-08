@@ -140,7 +140,7 @@ def construct_graph(initial_route: list[int], initial_result: list[int], modific
     return labels, graph
 
 
-def convert_graph_to_connections(graph: list[list[int]]) -> list[dict[str, dict[str, int]]]:
+def convert_graph_to_connections(graph: list[list[int]], dry_run=True) -> tuple[list[dict[str, dict[str, int]]], int, int]:
     """
     Converts the graph into the format expected by the server.
 
@@ -165,24 +165,31 @@ def convert_graph_to_connections(graph: list[list[int]]) -> list[dict[str, dict[
                 break
 
     # Assign doors where one side matches.
+    single_matches = 0
     for src_idx, src_door in itertools.product(range(N), range(6)):
         if doors[src_idx][src_door][1] != -1 or doors[src_idx][src_door][0] == -1:
             continue
-        print(f"Door {src_idx, src_door} with dst={doors[src_idx][src_door][0]} is unassigned")
+        single_matches += 1
+        if not dry_run:
+            print(f"Door {src_idx, src_door} with dst={doors[src_idx][src_door][0]} is unassigned")
         for dst_idx, dst_door in itertools.product(range(N), range(6)):
             if doors[dst_idx][dst_door][1] != -1:
                 continue
             if doors[src_idx][src_door][0] == dst_idx:
                 doors[src_idx][src_door] = dst_idx, dst_door
                 doors[dst_idx][dst_door] = src_idx, src_door
-                print(f"Assigned to {dst_idx, dst_door}")
+                if not dry_run:
+                    print(f"Assigned to {dst_idx, dst_door}")
                 break
 
     # Point remaining doors to themselves.
+    guesses = 0
     for src_idx, src_door in itertools.product(range(N), range(6)):
         if doors[src_idx][src_door][1] != -1:
             continue
-        print(f"Assigning door {src_idx, src_door} to itself")
+        guesses += 1
+        if not dry_run:
+            print(f"Assigning door {src_idx, src_door} to itself")
         doors[src_idx][src_door] = src_idx, src_door
 
     connections = []
@@ -192,7 +199,7 @@ def convert_graph_to_connections(graph: list[list[int]]) -> list[dict[str, dict[
             "from": {"room": src_idx, "door": src_door},
             "to": {"room": dst_idx, "door": dst_door}
         })
-    return connections
+    return connections, single_matches, guesses
 
 
 def find_traversal(graph: list[list[int]]) -> tuple[list[int], list[int]]:
@@ -417,10 +424,10 @@ def main():
     
     graph = augment_graph(graph, traversal_idxs, traversal_route, traversal_result, traversal_modifications, traversal_results)
     
-    connections = convert_graph_to_connections(graph)
+    connections, single_matches, guesses = convert_graph_to_connections(graph, dry_run=False)
 
     verdict = interact.guess(labels, 0, connections)
-    print(verdict, f"{queries = }")
+    print(verdict, f"{queries = }. {single_matches = }. {guesses = }")
 
 
 if __name__ == '__main__':
