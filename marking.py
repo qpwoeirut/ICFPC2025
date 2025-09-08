@@ -2,6 +2,7 @@ import collections
 import datetime
 import itertools
 import random
+from typing import Optional
 
 import interact
 
@@ -71,6 +72,50 @@ def generate_routes(initial_route: list[int], initial_result: list[int], travers
         routes.append(''.join(route))
 
     return modifications, routes
+
+
+def _init_to_be_modified(initial_result: list[int], traversal_idxs: Optional[list[int]]) -> list[int]:
+    """
+    Helper to initialize the list of indices that still need to be identified.
+
+    Mirrors the selection logic in generate_routes.
+    """
+    if traversal_idxs is None:
+        return [*range(len(initial_result) - 1)]
+    else:
+        return [i for i, v in enumerate(traversal_idxs) if traversal_idxs.index(v) == i]
+
+
+def _pick_batch_indices(initial_result: list[int], to_be_modified: list[int]) -> tuple[list[int], list[int], list[int]]:
+    """
+    Pick up to 4 indices to modify, ensuring label diversity when possible.
+
+    Returns (selected_idxs, selected_labels, remaining_to_modify)
+    """
+    selected_idxs = to_be_modified[:3]
+    remaining = to_be_modified[3:]
+    selected_labels = [initial_result[i] for i in selected_idxs]
+
+    # Try to add a 4th index with a different label set if possible
+    for j, idx in enumerate(remaining):
+        label = initial_result[idx]
+        if len({*selected_labels, label}) > 1:
+            selected_idxs.append(remaining.pop(j))
+            selected_labels.append(label)
+            break
+
+    return selected_idxs, selected_labels, remaining
+
+
+def _build_route_with_mods(initial_route: list[int], selected_idxs: list[int], new_labels: list[int]) -> tuple[list[tuple[int, int]], str]:
+    """
+    Build a single modified route string and corresponding modifications list.
+    """
+    route = [*map(str, initial_route)]
+    for idx, label in zip(selected_idxs, new_labels):
+        route[idx] = f"[{label}]" + route[idx]
+    modifications = [*zip(selected_idxs, new_labels)]
+    return modifications, ''.join(route)
 
 
 def clean_results(modifications: list[list[tuple[int, int]]], results: list[list[int]]) -> list[list[int]]:
@@ -417,13 +462,34 @@ def solve_problem(N, K, problem):
     initial_resp = interact.explore([''.join(map(str, initial_route))])
     # print(initial_resp)
     initial_result = initial_resp["results"][0]
+    # Use server-reported query count
+    queries = initial_resp.get("queryCount", 0)
 
-    modifications, routes = generate_routes(initial_route, initial_result)
-    # print(routes)
-    resp = interact.explore(routes)
-    # print(resp)
-    queries = resp["queryCount"]
-    results = clean_results(modifications, resp["results"])
+    # Batched querying: only query remaining unknown nodes after each modification batch
+    to_be_modified = _init_to_be_modified(initial_result, traversal_idxs=None)
+    modifications: list[list[tuple[int, int]]] = []
+    routes: list[str] = []
+    results: list[list[int]] = []
+
+    while len(to_be_modified) > 0:
+        selected_idxs, selected_labels, remaining = _pick_batch_indices(initial_result, to_be_modified)
+        new_labels = create_modified_labels(selected_labels)
+        mods, route_str = _build_route_with_mods(initial_route, selected_idxs, new_labels)
+
+        # Issue query for just this batch
+        resp = interact.explore([route_str])
+        cleaned = clean_results([mods], [resp["results"][0]])[0]
+        queries = resp.get("queryCount", queries)
+
+        # Record
+        modifications.append(mods)
+        routes.append(route_str)
+        results.append(cleaned)
+
+        # Prune indices whose label changed (now identified)
+        to_be_modified = [i for i in remaining if initial_result[i] == cleaned[i]]
+
+    # queries already reflects the last server-reported query count
 
     labels, graph = construct_graph(N, initial_route, initial_result, modifications, results)
     # print(graph)
@@ -438,12 +504,28 @@ def solve_problem(N, K, problem):
         traversal_resp = interact.explore([''.join(map(str, traversal_route))])
         print(traversal_resp)
         traversal_result = traversal_resp["results"][0]
+        queries = traversal_resp.get("queryCount", queries)  # baseline traversal query
 
-        traversal_modifications, traversal_routes = generate_routes(traversal_route, traversal_result, traversal_idxs)
+        # Batched querying for traversal augmentation
+        trav_to_be_modified = _init_to_be_modified(traversal_result, traversal_idxs)
+        traversal_modifications: list[list[tuple[int, int]]] = []
+        traversal_routes: list[str] = []
+        traversal_results: list[list[int]] = []
 
-        traversal_resp = interact.explore(traversal_routes)
-        queries = traversal_resp["queryCount"]
-        traversal_results = clean_results(traversal_modifications, traversal_resp["results"])
+        while len(trav_to_be_modified) > 0:
+            sel_idxs, sel_labels, trav_remaining = _pick_batch_indices(traversal_result, trav_to_be_modified)
+            new_labels = create_modified_labels(sel_labels)
+            mods, route_str = _build_route_with_mods(traversal_route, sel_idxs, new_labels)
+
+            trav_resp = interact.explore([route_str])
+            cleaned = clean_results([mods], [trav_resp["results"][0]])[0]
+            queries = trav_resp.get("queryCount", queries)
+
+            traversal_modifications.append(mods)
+            traversal_routes.append(route_str)
+            traversal_results.append(cleaned)
+
+            trav_to_be_modified = [i for i in trav_remaining if traversal_result[i] == cleaned[i]]
 
         graph = augment_graph(graph, traversal_idxs, traversal_route, traversal_result, traversal_modifications,
                               traversal_results)
@@ -455,7 +537,7 @@ def solve_problem(N, K, problem):
     print(verdict, f"{queries = }. {single_matches = }. {guesses = }")
 
     with open("data/runs.txt", 'a') as f:
-        f.write(f"{datetime.datetime.now()} {problem} {N} {K} {verdict["correct"]} {queries} {single_matches} {guesses}\n")
+        f.write(f"{datetime.datetime.now()} {problem} {N} {K} {verdict['correct']} {queries} {single_matches} {guesses}\n")
 
 
 def main():
