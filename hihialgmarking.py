@@ -161,8 +161,6 @@ def countneg(edges):
 
 if __name__ == "__main__":
     interact()
-    # res = register("------- PRIZE CUTOFF -------", "scheme", "stanleyzhong8@gmail.com")
-    # print(res)
     problem = "he"
     n = 60
     lenid = 15
