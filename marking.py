@@ -27,7 +27,7 @@ def create_modified_labels(labels: list[int]) -> list[int]:
     raise ValueError("All the labels were the same :( generate_routes should make sure this doesn't happen")
 
 
-def generate_routes(initial_route: list[int], initial_result: list[int], n: int = None) -> tuple[
+def generate_routes(initial_route: list[int], initial_result: list[int], traversal_idxs: list[int] = None) -> tuple[
     list[list[tuple[int, int]]], list[str]]:
     """
     Generates modified routes based on an initial route.
@@ -38,16 +38,17 @@ def generate_routes(initial_route: list[int], initial_result: list[int], n: int 
 
     :param initial_route: the initial route that was explored, without any charcoal markings
     :param initial_result: the result of exploring the initial route
-    :param n: the number of indexes that need to be identified to find all N rooms
+    :param traversal_idxs: the traversal this route is based on, if any
     :return: the indexes of the marked rooms and which values they were marked as, and the corresponding routes
     """
-    if n is None:
-        n = len(initial_result) - 1
+    if traversal_idxs is None:
+        to_be_modified = [*range(len(initial_result) - 1)]
+    else:
+        to_be_modified = [i for i, v in enumerate(traversal_idxs) if traversal_idxs.index(v) == i]
 
     modifications = []
     routes = []
 
-    to_be_modified = [*range(n)]
     while len(to_be_modified) > 0:
         selected_idxs, to_be_modified = to_be_modified[:3], to_be_modified[3:]
         selected_labels = [initial_result[i] for i in selected_idxs]
@@ -438,8 +439,7 @@ def solve_problem(N, K, problem):
         print(traversal_resp)
         traversal_result = traversal_resp["results"][0]
 
-        traversal_modifications, traversal_routes = generate_routes(traversal_route, traversal_result,
-                                                                    n=len(traversal_doors) + 1)
+        traversal_modifications, traversal_routes = generate_routes(traversal_route, traversal_result, traversal_idxs)
 
         traversal_resp = interact.explore(traversal_routes)
         queries = traversal_resp["queryCount"]
