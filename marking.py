@@ -495,7 +495,7 @@ def solve_problem(N, K, problem):
     # print(graph)
 
     _, single_matches, guesses = convert_graph_to_connections(N, graph)
-    while single_matches > 1 or guesses > 0:
+    while single_matches > 4 or guesses > 2:
         traversal_idxs, traversal_doors = find_traversal(graph)
         # print(traversal_idxs)
         # print(traversal_doors)
