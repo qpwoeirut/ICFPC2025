@@ -1,4 +1,5 @@
 import collections
+import datetime
 import itertools
 import random
 
@@ -20,7 +21,7 @@ def create_modified_labels(labels: list[int]) -> list[int]:
     raise ValueError("All the labels were the same :( generate_routes should make sure this doesn't happen")
 
 
-def generate_routes(initial_route: list[int], initial_result: list[int]) -> tuple[
+def generate_routes(initial_route: list[int], initial_result: list[int], n: int = None) -> tuple[
     list[list[tuple[int, int]]], list[str]]:
     """
     Generates modified routes based on an initial route.
@@ -31,6 +32,7 @@ def generate_routes(initial_route: list[int], initial_result: list[int]) -> tupl
 
     :param initial_route: the initial route that was explored, without any charcoal markings
     :param initial_result: the result of exploring the initial route
+    :param n: the number of
     :return: the indexes of the marked rooms and which values they were marked as, and the corresponding routes
     """
     modifications = []
@@ -80,7 +82,8 @@ def clean_results(modifications: list[list[tuple[int, int]]], results: list[list
     return cleaned_results
 
 
-def construct_graph(N: int, initial_route: list[int], initial_result: list[int], modifications: list[list[tuple[int, int]]],
+def construct_graph(N: int, initial_route: list[int], initial_result: list[int],
+                    modifications: list[list[tuple[int, int]]],
                     results: list[list[int]]) -> tuple[list[int], list[list[int]]]:
     """
     Construct the full graph. Some edges may lead to (-1, -1) if there is insufficient information.
@@ -113,7 +116,8 @@ def construct_graph(N: int, initial_route: list[int], initial_result: list[int],
 
     for mods, result in zip(modifications, results):
         mods = {label: idx for idx, label in mods}
-        assert len(initial_result) == len(result), f"{initial_result = }\n{len(initial_result) = }\n{result = }\n{len(result) = }"
+        assert len(initial_result) == len(
+            result), f"{initial_result = }\n{len(initial_result) = }\n{result = }\n{len(result) = }"
         for i in range(len(result)):
             if initial_result[i] != result[i]:
                 root_idx = mods[result[i]]
@@ -313,8 +317,10 @@ def find_traversal(graph: list[list[int]]) -> tuple[list[int], list[int]]:
 
     return traversal_idxs, traversal_doors
 
+
 def augment_graph(
-    graph: list[list[int]], traversal_idxs: list[int], traversal_route: list[int], traversal_result: list[int], traversal_modifications: list[list[tuple[int, int]]], traversal_results: list[list[int]]
+        graph: list[list[int]], traversal_idxs: list[int], traversal_route: list[int], traversal_result: list[int],
+        traversal_modifications: list[list[tuple[int, int]]], traversal_results: list[list[int]]
 ) -> list[list[int]]:
     """
     Augments the graph by filling in missing edges.
@@ -422,34 +428,38 @@ def solve_problem(N, K, problem):
         print(traversal_resp)
         traversal_result = traversal_resp["results"][0]
 
-        traversal_modifications, traversal_routes = generate_routes(traversal_route, traversal_result)
+        traversal_modifications, traversal_routes = generate_routes(traversal_route, traversal_result,
+                                                                    n=len(traversal_doors))
 
         traversal_resp = interact.explore(traversal_routes)
         queries = traversal_resp["queryCount"]
         traversal_results = clean_results(traversal_modifications, traversal_resp["results"])
 
-        graph = augment_graph(graph, traversal_idxs, traversal_route, traversal_result, traversal_modifications, traversal_results)
+        graph = augment_graph(graph, traversal_idxs, traversal_route, traversal_result, traversal_modifications,
+                              traversal_results)
         _, single_matches, guesses = convert_graph_to_connections(N, graph)
-    
+
     connections, single_matches, guesses = convert_graph_to_connections(N, graph, dry_run=False)
 
     verdict = interact.guess(labels, 0, connections)
     print(verdict, f"{queries = }. {single_matches = }. {guesses = }")
 
+    with open("data/runs.txt", 'a') as f:
+        f.write(f"{datetime.datetime.now()} {problem} {N} {K} {verdict["correct"]} {queries} {single_matches} {guesses}\n")
+
 
 def main():
-    # for N, problem in interact.PROBLEMS.items():
-    #     solve_problem(N, 18, problem)
-    # for N, problem in interact.PROBLEMS_2.items():
-    #     solve_problem(N, 6, problem)
-    for N, problem in interact.PROBLEMS_3.items():
-        # TODO: figure out the AssertionError
-        for _ in range(100):
-            try:
-                solve_problem(N, 6, problem)
-                break
-            except AssertionError:
-                pass
+    for N, problem in interact.PROBLEMS.items():
+        solve_problem(N, 18, problem)
+    while True:
+        for N, problem in [*interact.PROBLEMS_2.items(), *interact.PROBLEMS_3.items()]:
+            # TODO: figure out the AssertionError
+            for _ in range(100):
+                try:
+                    solve_problem(N, 6, problem)
+                    break
+                except AssertionError:
+                    pass
 
 
 if __name__ == '__main__':
