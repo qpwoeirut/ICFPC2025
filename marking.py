@@ -464,7 +464,6 @@ def main():
     while True:
         for N, problem in [*interact.PROBLEMS_2.items(), *interact.PROBLEMS_3.items()]:
             K = 6
-            # TODO: figure out the AssertionError
             for _ in range(100):
                 try:
                     solve_problem(N, K, problem)
