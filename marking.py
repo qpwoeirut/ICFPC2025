@@ -4,10 +4,6 @@ import random
 
 import interact
 
-N = 12
-K = 6
-PROBLEM = interact.PROBLEMS_2[N]
-
 
 def create_modified_labels(labels: list[int]) -> list[int]:
     """
@@ -84,7 +80,7 @@ def clean_results(modifications: list[list[tuple[int, int]]], results: list[list
     return cleaned_results
 
 
-def construct_graph(initial_route: list[int], initial_result: list[int], modifications: list[list[tuple[int, int]]],
+def construct_graph(N: int, initial_route: list[int], initial_result: list[int], modifications: list[list[tuple[int, int]]],
                     results: list[list[int]]) -> tuple[list[int], list[list[int]]]:
     """
     Construct the full graph. Some edges may lead to (-1, -1) if there is insufficient information.
@@ -92,6 +88,7 @@ def construct_graph(initial_route: list[int], initial_result: list[int], modific
     For each modified route, find which labels have changed from the original result. The indexes with those changed
     labels must belong to the same room, and we can merge them.
 
+    :param N: number of rooms in the graph
     :param initial_route: initial route without any charcoal markings
     :param initial_result: result of querying the initial route
     :param modifications: a list of what modifications were made to the initial route, in the form [index changed, new label]
@@ -140,13 +137,15 @@ def construct_graph(initial_route: list[int], initial_result: list[int], modific
     return labels, graph
 
 
-def convert_graph_to_connections(graph: list[list[int]], dry_run=True) -> tuple[list[dict[str, dict[str, int]]], int, int]:
+def convert_graph_to_connections(N: int, graph: list[list[int]], dry_run=True) -> tuple[list[dict[str, dict[str, int]]], int, int]:
     """
     Converts the graph into the format expected by the server.
 
     If there is insufficient information, it will raise a warning and assign doors randomly.
 
+    :param N: number of rooms in the graph
     :param graph: the destination room of each door
+    :param dry_run: whether to print warnings if there are single-side matches or guesses
     :return: the edges, as a list of dicts
     """
 
@@ -224,6 +223,8 @@ def find_traversal(graph: list[list[int]]) -> tuple[list[int], list[int]]:
     :param graph: adjacency via door destinations, potentially containing -1 entries.
     :return: (traversal_room_indexes, traversal_doors)
     """
+
+    N = len(graph)
 
     # Build adjacency list ignoring -1s and also remember door mapping
     adj: list[list[tuple[int, int]]] = [[] for _ in range(N)]  # (v, door)
@@ -388,9 +389,9 @@ def augment_graph(
     return graph
 
 
-def main():
-    print(f"Trying to solve {PROBLEM} ({N = })")
-    interact.select(PROBLEM)
+def solve_problem(N, K, problem):
+    print(f"Trying to solve {problem} ({N = }, {K = })")
+    interact.select(problem)
 
     initial_route = [random.randint(0, 5) for _ in range(N * K)]
     # print(initial_route)
@@ -402,32 +403,45 @@ def main():
     # print(routes)
     resp = interact.explore(routes)
     # print(resp)
+    queries = resp["queryCount"]
     results = clean_results(modifications, resp["results"])
 
-    labels, graph = construct_graph(initial_route, initial_result, modifications, results)
+    labels, graph = construct_graph(N, initial_route, initial_result, modifications, results)
     # print(graph)
 
-    traversal_idxs, traversal_doors = find_traversal(graph)
-    # print(traversal_idxs)
-    # print(traversal_doors)
+    _, single_matches, guesses = convert_graph_to_connections(N, graph)
+    while single_matches > 1 or guesses > 0:
+        traversal_idxs, traversal_doors = find_traversal(graph)
+        # print(traversal_idxs)
+        # print(traversal_doors)
 
-    traversal_route = traversal_doors + [random.randint(0, 5) for _ in range(N * K - len(traversal_doors))]
-    traversal_resp = interact.explore([''.join(map(str, traversal_route))])
-    print(traversal_resp)
-    traversal_result = traversal_resp["results"][0]
+        traversal_route = traversal_doors + [random.randint(0, 5) for _ in range(N * K - len(traversal_doors))]
+        traversal_resp = interact.explore([''.join(map(str, traversal_route))])
+        print(traversal_resp)
+        traversal_result = traversal_resp["results"][0]
+
+        traversal_modifications, traversal_routes = generate_routes(traversal_route, traversal_result)
+
+        traversal_resp = interact.explore(traversal_routes)
+        queries = traversal_resp["queryCount"]
+        traversal_results = clean_results(traversal_modifications, traversal_resp["results"])
+
+        graph = augment_graph(graph, traversal_idxs, traversal_route, traversal_result, traversal_modifications, traversal_results)
+        _, single_matches, guesses = convert_graph_to_connections(N, graph)
     
-    traversal_modifications, traversal_routes = generate_routes(traversal_route, traversal_result)
-    
-    traversal_resp = interact.explore(traversal_routes)
-    queries = traversal_resp["queryCount"]
-    traversal_results = clean_results(traversal_modifications, traversal_resp["results"])
-    
-    graph = augment_graph(graph, traversal_idxs, traversal_route, traversal_result, traversal_modifications, traversal_results)
-    
-    connections, single_matches, guesses = convert_graph_to_connections(graph, dry_run=False)
+    connections, single_matches, guesses = convert_graph_to_connections(N, graph, dry_run=False)
 
     verdict = interact.guess(labels, 0, connections)
     print(verdict, f"{queries = }. {single_matches = }. {guesses = }")
+
+
+def main():
+    for N, problem in interact.PROBLEMS.items():
+        solve_problem(N, 18, problem)
+    for N, problem in interact.PROBLEMS_2.items():
+        solve_problem(N, 6, problem)
+    for N, problem in interact.PROBLEMS_3.items():
+        solve_problem(N, 6, problem)
 
 
 if __name__ == '__main__':
