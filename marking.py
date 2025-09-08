@@ -6,6 +6,12 @@ import random
 import interact
 
 
+class RoomCountException(Exception):
+    def __init__(self, expected_count: int, actual_count: int):
+        self.expected_count = expected_count
+        self.actual_count = actual_count
+
+
 def create_modified_labels(labels: list[int]) -> list[int]:
     """
     Takes a list of labels and returns a new list of labels where each label is unique and all the labels have changed.
@@ -32,13 +38,16 @@ def generate_routes(initial_route: list[int], initial_result: list[int], n: int 
 
     :param initial_route: the initial route that was explored, without any charcoal markings
     :param initial_result: the result of exploring the initial route
-    :param n: the number of
+    :param n: the number of indexes that need to be identified to find all N rooms
     :return: the indexes of the marked rooms and which values they were marked as, and the corresponding routes
     """
+    if n is None:
+        n = len(initial_result) - 1
+
     modifications = []
     routes = []
 
-    to_be_modified = [*range(len(initial_result[:-1]))]
+    to_be_modified = [*range(n)]
     while len(to_be_modified) > 0:
         selected_idxs, to_be_modified = to_be_modified[:3], to_be_modified[3:]
         selected_labels = [initial_result[i] for i in selected_idxs]
@@ -128,7 +137,8 @@ def construct_graph(N: int, initial_route: list[int], initial_result: list[int],
     room_idx = {idx: i for i, idx in enumerate(all_roots)}
 
     # TODO: this fails sometimes with len(all_roots) == len(room_idx) == N - 1
-    assert len(all_roots) == len(room_idx) == N, (len(all_roots), len(room_idx), N)
+    if not (len(all_roots) == len(room_idx) == N):
+        raise RoomCountException(expected_count=N, actual_count=len(all_roots))
 
     labels = [initial_result[idx] for idx in all_roots]
 
@@ -429,7 +439,7 @@ def solve_problem(N, K, problem):
         traversal_result = traversal_resp["results"][0]
 
         traversal_modifications, traversal_routes = generate_routes(traversal_route, traversal_result,
-                                                                    n=len(traversal_doors))
+                                                                    n=len(traversal_doors) + 1)
 
         traversal_resp = interact.explore(traversal_routes)
         queries = traversal_resp["queryCount"]
@@ -453,13 +463,15 @@ def main():
         solve_problem(N, 18, problem)
     while True:
         for N, problem in [*interact.PROBLEMS_2.items(), *interact.PROBLEMS_3.items()]:
+            K = 6
             # TODO: figure out the AssertionError
             for _ in range(100):
                 try:
-                    solve_problem(N, 6, problem)
+                    solve_problem(N, K, problem)
                     break
-                except AssertionError:
-                    pass
+                except RoomCountException as e:
+                    with open("data/runs.txt", 'a') as f:
+                        f.write(f"{datetime.datetime.now()} {problem} {N} {K} {None} {e.actual_count} {e.expected_count}\n")
 
 
 if __name__ == '__main__':
