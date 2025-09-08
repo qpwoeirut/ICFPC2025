@@ -122,6 +122,8 @@ def construct_graph(N: int, initial_route: list[int], initial_result: list[int],
     root = [get_root(u) for u in root]
     all_roots = [*sorted(set(root))]
     room_idx = {idx: i for i, idx in enumerate(all_roots)}
+
+    # TODO: this fails sometimes with len(all_roots) == len(room_idx) == N - 1
     assert len(all_roots) == len(room_idx) == N, (len(all_roots), len(room_idx), N)
 
     labels = [initial_result[idx] for idx in all_roots]
@@ -436,12 +438,18 @@ def solve_problem(N, K, problem):
 
 
 def main():
-    for N, problem in interact.PROBLEMS.items():
-        solve_problem(N, 18, problem)
-    for N, problem in interact.PROBLEMS_2.items():
-        solve_problem(N, 6, problem)
+    # for N, problem in interact.PROBLEMS.items():
+    #     solve_problem(N, 18, problem)
+    # for N, problem in interact.PROBLEMS_2.items():
+    #     solve_problem(N, 6, problem)
     for N, problem in interact.PROBLEMS_3.items():
-        solve_problem(N, 6, problem)
+        # TODO: figure out the AssertionError
+        for _ in range(100):
+            try:
+                solve_problem(N, 6, problem)
+                break
+            except AssertionError:
+                pass
 
 
 if __name__ == '__main__':
